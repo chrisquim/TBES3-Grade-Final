@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>High Striker - TBES 3 Grade Portal</title>
+    
+    <!-- SEO & Metadata -->
+    <meta name="description" content="Official TBES 3 Grade Portal for Computer Fundamentals and Programming at St. Mary's College of Tagum, Inc.">
+    <meta property="og:title" content="TBES 3 Grade Reveal">
+    <meta property="og:description" content="Interactive grade reveal portal for Engr. Christopher Quimpo's students.">
+    <meta property="og:image" content="https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=1200&auto=format&fit=crop">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🥁</text></svg>">
+
+    <style>
+        :root {
+            --track-bg: #eee;
+            --border: #222;
+            --major-tick: #444;
+            --minor-tick: #ccc;
+            --bar-color: #e74c3c;
+            --win-color: #27ae60;
+            --btn-green: #27ae60;
+            --btn-green-shadow: #1b7a43;
+            --error-red: #c0392b;
+            --smc-blue: #2c3e50;
+        }
+
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100dvh;
+            background: #f8f9fa;
+            touch-action: manipulation;
+            overflow: hidden;
+            color: #333;
+        }
+
+        /* View Management Fix */
+        .view-section {
+            display: none; /* Default state: hidden */
+            width: 100%;
+            height: 100%;
+            padding: 15px;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .view-section.active {
+            display: flex; /* Only show when active */
+        }
+
+        /* Login View Aesthetic */
+        #login-view #login-card {
+            max-width: 450px;
+            width: 100%;
+            text-align: center;
+            background: white;
+            padding: 2.5rem 1.5rem;
+            border-radius: 16px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+            border-top: 6px solid var(--smc-blue);
+        }
+
+        .school-info h2 { font-size: 1.1rem; margin: 0; color: var(--smc-blue); }
+        .school-info p { font-size: 0.8rem; margin: 4px 0; color: #777; }
+        
+        .course-info { margin: 1.5rem 0; }
+        .course-info h3 { font-size: 0.9rem; color: #444; margin: 0; }
+        .course-info h1 { font-size: 2rem; margin: 5px 0; color: var(--border); line-height: 1.1; white-space: pre-line; }
+        .course-info .instructor { font-size: 0.85rem; color: #555; margin-top: 5px; font-style: italic; }
+
+        #login-view input {
+            width: 100%;
+            padding: 1.1rem;
+            font-size: 1rem;
+            border: 2px solid #e1e1e1;
+            border-radius: 10px;
+            margin-bottom: 0.5rem;
+            text-align: center;
+            transition: border-color 0.2s;
+        }
+
+        #login-view input:focus { outline: none; border-color: var(--smc-blue); }
+        #login-view input[readonly] { background-color: #f1f3f5; color: #888; cursor: not-allowed; }
+
+        #login-status { font-size: 0.75rem; color: var(--error-red); height: 1.2rem; margin-bottom: 0.5rem; font-weight: 600; }
+
+        #reveal-btn {
+            display: none;
+            width: 100%;
+            padding: 1.1rem;
+            font-size: 1rem;
+            font-weight: 800;
+            background: var(--btn-green);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            box-shadow: 0 5px 0 var(--btn-green-shadow);
+            text-transform: uppercase;
+            transition: transform 0.1s;
+        }
+        #reveal-btn:active { transform: translateY(3px); box-shadow: 0 2px 0 var(--btn-green-shadow); }
+
+        /* Fail View */
+        #fail-view-card {
+            text-align: center;
+            background: white;
+            padding: 2.5rem;
+            border-radius: 16px;
+            max-width: 400px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.1);
+        }
+
+        /* Game View - Force vertical fit for mobile */
+        #game-view main {
+            width: 100%;
+            height: 100%;
+            display: grid;
+            grid-template-rows: auto auto 1fr auto;
+            gap: 10px;
+            padding: 5px 0;
+            max-width: 500px;
+        }
+
+        /* Debug Visibility */
+        body.debug-visible #game-view main {
+            grid-template-columns: 260px 1fr;
+            max-width: 850px;
+        }
+
+        header h1 { margin: 0; font-size: 0.9rem; text-transform: uppercase; color: #999; letter-spacing: 1px; }
+        #student-name-display { font-size: 1.4rem; font-weight: 800; color: var(--smc-blue); margin-top: 2px; }
+
+        section#game-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: white;
+            padding: 15px;
+            border-radius: 16px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.04);
+            position: relative;
+            height: 100%;
+            width: 100%;
+        }
+
+        #tps-meter { position: absolute; top: 12px; right: 15px; font-size: 0.75rem; font-weight: bold; color: #bbb; font-family: monospace; }
+        #maintenance-status { position: absolute; top: 12px; left: 15px; font-size: 0.85rem; font-weight: bold; color: var(--win-color); opacity: 0; }
+        #status-msg { font-size: 0.95rem; font-weight: 600; color: #888; height: 1.3rem; text-align: center; margin-bottom: 5px; }
+
+        output {
+            display: block;
+            font-size: 5rem;
+            font-weight: 900;
+            line-height: 1;
+            margin: 5px 0;
+            font-variant-numeric: tabular-nums;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        @keyframes pulse-glow {
+            0% { text-shadow: 0 0 5px transparent; }
+            50% { text-shadow: 0 0 20px currentColor; }
+            100% { text-shadow: 0 0 5px transparent; }
+        }
+        output.in-zone { animation: pulse-glow 0.6s infinite alternate; }
+
+        div.tower-row { 
+            display: flex; 
+            align-items: center; 
+            height: 38vh;
+            gap: 20px; 
+            margin: 10px 0;
+        }
+        
+        nav#ruler { position: relative; width: 40px; height: 100%; }
+        nav#ruler i { position: absolute; right: 0; height: 1px; background: var(--minor-tick); width: 10px; transform: translateY(50%); }
+        nav#ruler i[data-major] { width: 20px; background: var(--major-tick); height: 2px; }
+        nav#ruler i[data-major]::before { content: attr(data-major); position: absolute; right: 25px; top: -8px; font-size: 0.75rem; font-weight: bold; color: var(--major-tick); }
+
+        figure { position: relative; width: 85px; height: 100%; background: var(--track-bg); border: 5px solid var(--border); border-radius: 12px; margin: 0; overflow: hidden; }
+        figure b { position: absolute; bottom: 0; left: 0; right: 0; background: var(--bar-color); height: 0%; transition: height 0.05s linear, background-color 0.2s; }
+
+        .controls-wrapper { width: 100%; padding: 0 10px; margin-top: 10px; }
+        button#hit {
+            appearance: none; border: none; padding: 1.4rem; width: 100%; font-size: 1.6rem; font-weight: 900; border-radius: 100px; cursor: pointer; user-select: none;
+            background: var(--btn-green); color: white; box-shadow: 0 10px 0 var(--btn-green-shadow); text-transform: uppercase; letter-spacing: 1px;
+            transition: all 0.1s;
+        }
+        button#hit:active { transform: translateY(6px); box-shadow: 0 4px 0 var(--btn-green-shadow); }
+        button#hit:disabled { opacity: 0; pointer-events: none; }
+
+        /* Debug Sidebar */
+        aside#debug-sidebar { 
+            background: #fff; 
+            border: 1px solid #ddd; 
+            border-radius: 12px; 
+            padding: 1.2rem; 
+            font-size: 0.75rem; 
+            display: none; 
+            height: 100%; 
+            overflow-y: auto; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        body.debug-visible aside#debug-sidebar { display: block; }
+        .debug-group { border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 10px; }
+        .debug-group:last-child { border-bottom: none; }
+        label { display: flex; flex-direction: column; font-weight: 600; text-align: left; gap: 4px; margin-bottom: 8px; }
+        .check-label { flex-direction: row; align-items: center; gap: 8px; cursor: pointer; font-weight: normal; }
+        .check-label input { width: auto; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+
+        .confetti { position: fixed; width: 10px; height: 10px; z-index: 1000; top: -10px; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+    <!-- LOGIN VIEW -->
+    <section id="login-view" class="view-section active">
+        <div id="login-card">
+            <div class="school-info">
+                <h2>St. Mary's College of Tagum, Inc.</h2>
+                <p>S.Y. 2025-2026 | 2nd Semester</p>
+            </div>
+            
+            <div class="course-info">
+                <h3>Computer Fundamentals and Programming</h3>
+                <h1>TBES 3 
+                Grade Portal</h1>
+                <p class="instructor">Instructor: Engr. Christopher Quimpo</p>
+            </div>
+
+            <div class="login-form">
+                <input type="email" id="email-input" placeholder="Enter your official school email" autocomplete="email">
+                <div id="login-status"></div>
+                <button id="reveal-btn">Reveal my TBES 3 Grade</button>
+            </div>
+        </div>
+    </section>
+
+    <!-- FAIL VIEW -->
+    <section id="fail-view" class="view-section">
+        <div id="fail-view-card">
+            <h2 id="fail-student-name" style="color:var(--error-red); margin:0;">Student Name</h2>
+            <div id="fail-student-grade" style="font-size:4.5rem; font-weight: 900; margin: 1rem 0; color: var(--border);">00</div>
+            <p style="color:#666; line-height:1.5;">Sorry, you failed the subject grades and requirements on the given chance and already late.</p>
+        </div>
+    </section>
+
+    <!-- GAME VIEW -->
+    <section id="game-view" class="view-section">
+        <main>
+            <header>
+                <h1>TBES 3 Result</h1>
+                <div id="student-name-display">Welcome</div>
+            </header>
+
+            <aside id="debug-sidebar">
+                <form id="debug-form">
+                    <div class="debug-group">
+                        <label class="check-label"><input type="checkbox" id="show-tps" checked> Show TPS</label>
+                        <label class="check-label"><input type="checkbox" id="show-maint"> Show Hold Duration</label>
+                    </div>
+                    <div class="debug-group">
+                        <label>Tap Power: <span id="lbl-pwr">5.0</span><input type="range" id="cfg-pwr" min="1" max="20" step="0.5" value="5"></label>
+                        <label>Value Anchor: <span id="lbl-anchor">80</span><input type="range" id="cfg-anchor" min="40" max="100" step="1" value="80"></label>
+                        <label>Anchor Tolerance: <span id="lbl-tolerance">7</span><input type="range" id="cfg-tolerance" min="0" max="15" step="1" value="7"></label>
+                        <label>Maintain Duration: <span id="lbl-maint">20s</span><input type="range" id="cfg-maint" min="5" max="40" step="1" value="20"></label>
+                    </div>
+                    <div class="debug-group">
+                        <label>Min Depletion: <span id="lbl-drain-min">10.0</span><input type="range" id="cfg-drain-min" min="0" max="25" step="0.5" value="10"></label>
+                        <label>Max Depletion: <span id="lbl-drain-max">30.0</span><input type="range" id="cfg-drain-max" min="1" max="100" step="1" value="30"></label>
+                        <label class="check-label"><input type="checkbox" id="drain-from-anchor" checked> Drain scale from Anchor</label>
+                        <label class="check-label"><input type="checkbox" id="decay-from-anchor" checked> Decay scale from Anchor</label>
+                    </div>
+                    <button type="button" id="reset" style="background:var(--win-color); color:white; border:none; padding:12px; border-radius:10px; cursor:pointer; width:100%; font-weight:bold; text-transform:uppercase;">RESET SESSION</button>
+                </form>
+            </aside>
+
+            <section id="game-container">
+                <div id="maintenance-status">HOLDING: <span id="maint-val">0.0</span>s</div>
+                <div id="tps-meter">TPS: <span id="tps-val">0.0</span></div>
+                <div id="status-msg">Grade Reveal</div>
+                <output id="val">40</output>
+                <div class="tower-row">
+                    <nav id="ruler"></nav>
+                    <figure><b id="puck"></b></figure>
+                </div>
+                <div class="controls-wrapper">
+                    <div id="win-msg" style="font-size:1.6rem; font-weight:bold; color:var(--win-color); display:none; text-align:center; margin-bottom:15px; animation: pulse-glow 1s infinite;">Congrats! 🏆</div>
+                    <button id="hit">Tap to Reveal</button>
+                </div>
+            </section>
+        </main>
+    </section>
+
+    <script>
+        const decodeB64 = (str) => {
+            try {
+                const padded = str.padEnd(str.length + (4 - str.length % 4) % 4, '=');
+                return atob(padded);
+            } catch (e) { return "Unknown"; }
+        };
+
+        const rawData = [{"u":"YWxlcmlhLm1hcmtqb2hu","n":"TWFyayBKb2huIEUuIEFsZXJpYQ","g":89},{"u":"YXNpcy5sb3VyZW5jZQ","n":"TG91cmVuY2UgTC4gQXNpcw","g":75},{"u":"YXNuYS5uZWlsZWRyaWFu","n":"TmVpbCBFZHJpYW4gVi4gQXNuYQ","g":85},{"u":"YXZlbGluby5jbGludGxlaXN0ZXJkYXZpZA","n":"Q2xpbnQgTGVpc3RlciBEYXZpZCBNLiBBdmVsaW5v","g":79},{"u":"YmF5bGVzLmRhcmN5am9ldmVuY2U","n":"RGFyY3kgSm9ldmVuY2UgQmF5bGVz","g":90},{"u":"YnVhdGVzLmlzYWlhaHZpbmNlbnQ","n":"SXNhaWFoIFZpbmNlbnQgSi4gQnVhdGVz","g":97},{"u":"Y2FwdXJhcy5raW5nYXJ0aHJvbmU","n":"S2luZyBBcnRocm9uZSBDYXB1cmFz","g":88},{"u":"Y2Fzb2x1Y2FuLnByaW5jZXJhdmVu","n":"UHJpbmNlIFJhdmVuIEouIENhc29sdWNhbg","g":93},{"u":"Y29sb24uam9obm1lcnJpY2s","n":"Sm9obiBNZXJyaWNrIEEuIENvbG9u","g":87},{"u":"Y29yaWFzLmR1c3RpbmNhcmxv","n":"RHVzdGluIENhcmxvIFAuIENvcmlhcw","g":86},{"u":"Y29ybml0ZXMubWN0cmVsbGluZXJpb3Blcg","n":"TWMgVHJlbGxpbmUgUmlvcGVyIENvcm5pdGVz","g":81},{"u":"Y29zbWVuby5yZWdnZXJhcmQ","n":"UmVnIEdlcmFyZCBDLiBDb3NtZcOxbw","g":83},{"u":"Y3VudGFwYXkubmlra29qYXk","n":"Tmlra28gSmF5IEQuIEN1bnRhcGF5","g":80},{"u":"ZGFiYXRvcy5sZWlqb2huemVu","n":"TGVpIEpvaG56ZW4gQy4gRGFiYXRvcw","g":91},{"u":"ZGFuaWVsZXMubGFuemFuZ2Vsbw","n":"TGFueiBBbmdlbG8gRy4gRGFuaWVsZXM","g":88},{"u":"ZGVsYWNydXouamVyZW15aW1hbmdhYnJpZWw","n":"SmVyZW15IEltYW4gR2FicmllbCBEZSBMYSBDcnV6","g":94},{"u":"ZnJvbmRvemEua2xlbnR2aW5jZW50","n":"S2xlbnQgVmluY2VudCBGcm9uZG96YQ","g":86},{"u":"Z2FtYW5hLmRhdmU","n":"RGF2ZSBMLiBHYW1hbmE","g":85},{"u":"aGluYW1wYXMuam9obmxlZXdhcnJlbg","n":"Sm9obiBMZWUgV2FycmVuIEhpbmFtcGFz","g":82},{"u":"amFjYWxhLmt5bGVyYW5kZWxsam9zZXBo","n":"S3lsZSBSYW5kZWxsIEpvc2VwaCBQLiBKYWNhbGE","g":80},{"u":"am9zZS5qb2huY2FybG8","n":"Sm9obiBDYXJsbyBJLiBKb3Nl","g":87},{"u":"bGFicmFkb3IubWljaGFlbGFkcmlhbg","n":"TWljaGFlbCBBZHJpYW4gTGFicmFkb3I","g":88},{"u":"bGVtaW5kb2cucHJpbmNlZGF2aWQ","n":"UHJpbmNlIERhdmlkIE0uIExlbWluZG9n","g":80},{"u":"bWFub25nZ2FsLmtlbnRhbmRyZQ","n":"S2VudCBBbmRyZSBSLiBNYW5vbmdnYWw","g":96},{"u":"bWVsZW5kcmVzLmpvc2hjaHJpc3Rhbg","n":"Sm9zaCBDaHJpc3RhbiBBLiBNZWxlbmRyZXM","g":96},{"u":"bmlvLmFsZHJpbmpvc2g","n":"QWxkcmluIEpvc2ggRy4gTmlv","g":91},{"u":"cGFsby53aWxmcmVk","n":"V2lsZnJlZCBTLiBQYWxv","g":87},{"u":"cGFuZ2F0dW5nYW4uamFkZQ","n":"SmFkZSBBLiBQYW5nYXR1bmdhbg","g":79},{"u":"cm9tYS5qaWFu","n":"SmlhbiBNLiBSb21h","g":88},{"u":"c2FuY2hlei5qZXJlbWlhaG1jZGFuaWVs","n":"SmVyZW1pYWggTWNkYW5pZWwgU2FuY2hleg","g":81},{"u":"c3VzYXMudmluanlicmllbA","n":"VmluIEp5YnJpZWwgRy4gU3VzYXM","g":86},{"u":"dmlsbGFyZWFsLmtlaXRoYW50aG9ueQ","n":"S2VpdGggQW50aG9ueSBDLiBWaWxsYXJlYWw","g":85},{"u":"Y2FuYWxpamEuYXlsbGFtYXJpeg","n":"QXlsbGEgTWFyaXogRC4gQ2FuYWxpamE","g":86},{"u":"Y2Fuby5yaWFhbnRvbmV0dGU","n":"UmlhIEFudG9uZXR0ZSBELiBDYW5v","g":90},{"u":"Y29uc3RhbnRpbm8ud3luYWhtYXJpZQ","n":"V3luYWggTWFyaWUgQ29uc3RhbnRpbm8","g":90},{"u":"ZG9sb3JpdG8ubWlhZXJpY2th","n":"TWlhIEVyaWNrYSBCLiBEb2xvcml0bw","g":87},{"u":"ZW5nYXkubmF0aGFsaWFhbGxpc29u","n":"TmF0aGFsaWEgQWxsaXNvbiBBLiBFbmdheQ","g":90},{"u":"aGluYW1wYXMubmVpbG1hcmdsYXpl","n":"TmVpbG1hciBHbGF6ZSBQLiBIaW5hbXBhcw","g":90},{"u":"aW5vY2VudGVzLnByaW5jZXNzamhhbWFu","n":"UHJpbmNlc3MgSmhhbWFuIElub2NlbnRlcw","g":88},{"u":"anVtYXdhbi5zYW1hbnRoYXBlYXJs","n":"U2FtYW50aGEgUGVhcmwgSnVtYXdhbg","g":88},{"u":"bWFodW1hcy5pcmVuZQ","n":"SXJlbmUgTC4gTWFodW1hcw","g":90},{"u":"cGFjaXMuZGV2aWU","n":"RGV2aWUgRC4gUGFjaXM","g":88},{"u":"cGFzaWxiYXMuY2hyaXN0aW5l","n":"Q2hyaXN0aW5lIEIuIFBhc2lsYmFz","g":89},{"u":"dmVudHVyYS5kYXNoZWxsZXJ5bg","n":"RGFzaGVsbGUgUnluIE0uIFZlbnR1cmE","g":85},{"u":"YWJhdGF5by50amtoeWxs","n":"VGogS2h5bGwgRC4gQWJhdGF5bw","g":90},{"u":"YWJlbGxlamEuYWRyaWFuamFkZQ","n":"QWRyaWFuIEphZGUgRC4gQWJlbGxlamE","g":82},{"u":"YmFsaWdob3QubWFyY2pvc2U","n":"TWFyYyBKb3NlIFAuIEJhbGlnaG90","g":90},{"u":"YmFsbGFyZXMudW5pZWJveQ","n":"VW5pZSBCb3kgUy4gQmFsbGFyZXM","g":80},{"u":"YmFuaWFzLmNocmlzdGlhbmxvdWlz","n":"Q2hyaXN0aWFuIExvdWlzIEEuIEJhbmlhcw","g":90},{"u":"YmluYWxhbmdiYW5nLmJyYW50ZG9u","n":"QnJhbnRkb24gQmluYWxhbmdiYW5n","g":97},{"u":"Y2FwYW5neWFyaWhhbi5qZXNzdGhvbnk","n":"SmVzc3Rob255IENhcGFuZ3lhcmloYW4","g":83},{"u":"Y2FybmljZS5ub3ZlbWR5","n":"Tm92ZW0gRHkgTy4gQ2FybmljZQ","g":93},{"u":"Y29tYmFzLmtldGhicmlhbg","n":"S2V0aCBCcmlhbiBOLiBDb21iYXM","g":84},{"u":"Y29xdWlsbGEuY2FybG9zbWlndWVs","n":"Q2FybG9zIE1pZ3VlbCBDLiBDb3F1aWxsYQ","g":92},{"u":"ZGFsaW5nLnpheW5lYWRyaWFuZQ","n":"WmF5bmUgQWRyaWFuZSBBLiBEYWxpbmc","g":64},{"u":"ZGF2aWQuZ2FicmllbGFkcmlhbg","n":"R2FicmllbCBBZHJpYW4gVC4gRGF2aWQ","g":90},{"u":"ZWxpc2VvLnpoZW5yaWM","n":"WmhlbnJpYyBCLiBFbGlzZW8","g":85},{"u":"ZmFsYWxpbXBhLnNlYW5xdWlu","n":"U2VhbiBRdWluIFIuIEZhbGFsaW1wYQ","g":94},{"u":"Z3JhZmlsby5tYWlrb2FiZWw","n":"TWFpa28gQWJlbCBELiBHcmFmaWxv","g":86},{"u":"bHVtYmF5LmtlbnRyb3ZpYw","n":"S2VudCBSb3ZpYyBTLiBMdW1iYXk","g":84},{"u":"bHV6b24ubGFuY2VsYXdyZW5jZQ","n":"TGFuY2UgTGF3cmVuY2UgUi4gTHV6b24","g":82},{"u":"bWFscXVpc2l0by5zdHZpbmNlbnQ","n":"U3QuIFZpbmNlbnQgTy4gTWFscXVpc3Rv","g":84},{"u":"bWFsdW5lcy5jYXJsaGVucmljaA","n":"Q2FybCBIZW5yaWNoIE8uIE1hbHVuZXM","g":86},{"u":"bmljb2xhcy5tYXJzdGVwaGVu","n":"TWFyIFN0ZXBoZW4gQi4gTmljb2xhcw","g":86},{"u":"cGFuZXMubW9pc2VzZGF2ZQ","n":"TW9pc2VzIERhdmUgVi4gUGFuZXM","g":88},{"u":"cGFyYXluby5qdXN0aW5lbG91aXM","n":"SnVzdGluZSBMb3VpcyBELiBQYXJheW5v","g":75},{"u":"cGlqby5reWxlYW5kcmll","n":"S3lsZSBBbmRyaWUgTC4gUGlqbw","g":91},{"u":"cmFtb3Mubm9ydmljamFu","n":"Tm9ydmljIEphbiBPLiBSYW1vcw","g":85},{"u":"c2FuY2hlei5jZWRyaWNqYWRl","n":"Q2VkcmljIEphZGUgVC4gU2FuY2hleg","g":90},{"u":"YXJhYmFuaS5hbHRoZWFrYXRl","n":"QWx0aGVhIEthdGUgQS4gQXJhYmFuaQ","g":93},{"u":"Y2FjYXlhbi5rYXJseW5yaHltZQ","n":"S2FybHluIFJoeW1lIEEuIENhY2F5YW4","g":88},{"u":"ZGF0dS5sZXpsaWU","n":"TGV6bGllIERhdHU","g":93},{"u":"ZW5jbHVuYS5yb3NlbWFyaWU","n":"Um9zZW1hcmllIFMuIEVuY2x1bmE","g":85},{"u":"ZmVybmFuZGV6LmtleWE","n":"S2V5YSBRLiBGZXJuYW5kZXo","g":84},{"u":"Z2FjYWQubWFyaWFzb3BoaWE","n":"TWFyaWEgU29waGlhIEMuIEdhY2Fk","g":85},{"u":"aGlkbGFvLmVzdGVjZWthdGU","n":"RXN0ZWNlIEthdGUgVC4gSGlkbGFv","g":94},{"u":"bWFkZWxvLmFsdGhlYWFtb3I","n":"QWx0aGVhIEFtb3IgSi4gTWFkZWxv","g":88},{"u":"bWFuZ3VpbGltb3Rhbi5tYXJq","n":"TWFyaiBSLiBNYW5ndWlsaW1vdGFu","g":86},{"u":"b3JhbmdjYXlhLnNvZmhpYQ","n":"U29maGlhIE0uIE9yYW5nY2F5YQ","g":88},{"u":"cGFuZGlhbi5tYXJyeXZhbmU","n":"TWFycnkgVmFuZSBNLiBQYW5kaWFu","g":77},{"u":"c2FyZW5hcy5hbmdlbGFtYWU","n":"QW5nZWxhIE1hZSBNLiBTYXJlbmFz","g":83},{"u":"dmlsbGFudWV2YS5jaGxvZXN0YXJrZXppYWg","n":"Q2hsb2UgU3RhciBLZXppYWggVmlsbGFudWV2YQ","g":86},{"u":"YW5hZ2FwLnByaW56am9obg","n":"UHJpbnogSm9obiBNLiBBbmFnYXA","g":89},{"u":"YmFzaWcuZ2FicmllbGJlbmVkaWN0","n":"R2FicmllbCBCZW5lZGljdCBCYXNpZw","g":87},{"u":"YmVuZW1lcml0by5qYXlzb24","n":"SmF5c29uIEcuIEJlbmVtZXJpdG8","g":80},{"u":"YmVzb3Jpby5qb3NlcnlsbGxsb3lk","n":"Sm9zZXJ5bGwgTGxveWQgRC4gQmVzb3Jpbw","g":79},{"u":"Ym9saXF1ZS5oZW5yeWRhbmllbA","n":"SGVucnkgRGFuaWVsIE0uIEJvbGlxdWU","g":92},{"u":"Ym9uZ2EubGVhbmRyb2dpYW4","n":"TGVhbmRybyBHaWFuIEdhbGVvbiBCb25nYQ","g":62},{"u":"ZGFtYXNjby5tYXJjbGxveWQ","n":"TWFyYyBMbG95ZCBTLiBEYW1hc2Nv","g":82},{"u":"ZGVsYXBlbmEuamlhbmxha2U","n":"SmlhbiBMYWtlIFF1aXN0byBEZWxhIFBlw7Fh","g":92},{"u":"ZW5yZXJhLnJhbGZmcmFuY2lz","n":"UmFsZiBGcmFuY2lzIFIuIEVucmVyYQ","g":82},{"u":"Z3VtYXBhYy5qYW1lc2VsaQ","n":"SmFtZXMgRWxpIEUuIEd1bWFwYWM","g":79},{"u":"aGlsYW1vbi5raW5uZXRo","n":"S2lubmV0aCBWLiBIaWxhbW9u","g":90},{"u":"bGFub3MubWlsYmVu","n":"TWlsYmVuIEIuIExhbm9z","g":75},{"u":"bWlndWVsLmt1cnQ","n":"S3VydCBBLiBNaWd1ZWw","g":87},{"u":"b2xheXZhci5tYXJrZGlvbg","n":"TWFyayBEaW9uIEMuIE9sYXl2YXI","g":88},{"u":"cGVyb3NvLm1hcmZqaHVu","n":"TWFyZmpodW4gTC4gUGVyb3Nv","g":93},{"u":"cGljYXIucm9iZXJ0","n":"Um9iZXJ0IFAuIFBpY2Fy","g":86},{"u":"dGFuLmpvc2h1YQ","n":"Sm9zaHVhIEUuIFRhbg","g":64},{"u":"YWJhZC5sb3ZlbWFyeWpveW9mZWxpYQ","n":"TG92ZSBNYXJ5IEpveSBPLiBBYmFk","g":83},{"u":"YWxiYS5qb2FubmFreWxlbmU","n":"Sm9hbm5hIEt5bGVuZSBBLiBBbGJh","g":85},{"u":"Y2FuZGEuZmlhbWFl","n":"RmlhIE1hZSBDLiBDYW5kYQ","g":88},{"u":"ZWRpb3MuaXJyaXNoY3lyYWZheQ","n":"SXJyaXNoIEN5cmEgRmF5IEEuIEVkaW9z","g":86},{"u":"b2xheWVyLnNoYWtpeWE","n":"U2hha2l5YSBOb3ZpY2lvIE9sYXllcg","g":90},{"u":"cGFzYW9sLnJ5emhhbmNoZXZlcmxpZQ","n":"Unl6aGFuIENoZXZlcmxpZSBCLiBQYXNhb2w","g":84},{"u":"cmViYWphLmplc3NhYmV0aA","n":"SmVzc2EgQmV0aCBULiBSZWJhamE","g":78},{"u":"c2VndWlyYS5qYW1lbGE","n":"SmFtZWxhIFMuIFNlZ3VpcmE","g":77},{"u":"dG9ub2cuY3V0ZXByaW5jZXNz","n":"Q3V0ZSBQcmluY2VzcyBQLiBUb25vZw","g":76}];
+
+        const domain = "@smctagum.edu.ph";
+        const studentRecords = {};
+        rawData.forEach(item => {
+            const email = decodeB64(item.u) + domain;
+            studentRecords[email] = { name: decodeB64(item.n), grade: item.g };
+        });
+        studentRecords["pass@test.com"] = { name: "Chris Quimpo", grade: 96 };
+        studentRecords["fail@test.com"] = { name: "Juan Dela Cruz", grade: 74 };
+
+        const loginView = document.getElementById('login-view'), failView = document.getElementById('fail-view'), gameView = document.getElementById('game-view');
+        const emailInput = document.getElementById('email-input'), loginStatus = document.getElementById('login-status'), revealBtn = document.getElementById('reveal-btn');
+        const studentNameDisplay = document.getElementById('student-name-display'), failName = document.getElementById('fail-student-name'), failGrade = document.getElementById('fail-student-grade');
+
+        const puck = document.getElementById('puck'), display = document.getElementById('val'), statusMsg = document.getElementById('status-msg'), ruler = document.getElementById('ruler');
+        const btnHit = document.getElementById('hit'), btnReset = document.getElementById('reset'), winMsg = document.getElementById('win-msg');
+        const maintStatus = document.getElementById('maintenance-status'), maintVal = document.getElementById('maint-val'), tpsVal = document.getElementById('tps-val');
+        
+        const cfgPwr = document.getElementById('cfg-pwr'), cfgAnchor = document.getElementById('cfg-anchor'), cfgTolerance = document.getElementById('cfg-tolerance'), cfgMaint = document.getElementById('cfg-maint');
+        const cfgDrainMin = document.getElementById('cfg-drain-min'), cfgDrainMax = document.getElementById('cfg-drain-max');
+        const checkTps = document.getElementById('show-tps'), checkMaint = document.getElementById('show-maint'), checkDrainAnchor = document.getElementById('drain-from-anchor'), checkDecayAnchor = document.getElementById('decay-from-anchor');
+
+        let currentUser = null, score = 40, maintenanceTimer = 0, fallbackTimer = 0, isWon = false, tapTimes = [];
+        const MIN = 40, MAX = 100, RANGE = 60;
+
+        emailInput.addEventListener('input', () => {
+            if (emailInput.readOnly) return;
+            const val = emailInput.value.trim().toLowerCase();
+            const username = val.split('@')[0];
+            const hasAt = val.includes('@');
+            loginStatus.textContent = ""; revealBtn.style.display = 'none';
+
+            const match = Object.keys(studentRecords).find(e => e.split('@')[0] === username);
+            if (match) {
+                if (val !== match && (hasAt || val.length === username.length)) emailInput.value = match;
+                emailInput.readOnly = true; revealBtn.style.display = 'block';
+            } else if (hasAt) {
+                loginStatus.textContent = "no records found. check spelling or verify instructor";
+            }
+        });
+
+        revealBtn.addEventListener('click', () => {
+            currentUser = studentRecords[emailInput.value.trim().toLowerCase()];
+            if (currentUser.grade >= 75) {
+                loginView.classList.remove('active');
+                gameView.classList.add('active');
+                studentNameDisplay.textContent = currentUser.name;
+                cfgAnchor.value = currentUser.grade;
+                initScale(); updateUI(); requestAnimationFrame(loop);
+            } else {
+                loginView.classList.remove('active');
+                failView.classList.add('active');
+                failName.textContent = currentUser.name;
+                failGrade.textContent = currentUser.grade;
+            }
+        });
+
+        window.addEventListener('keydown', (e) => { if (e.key === 'F6') { e.preventDefault(); document.body.classList.toggle('debug-visible'); } });
+
+        function initScale() {
+            ruler.innerHTML = '';
+            for (let i = MIN; i <= MAX; i++) {
+                const tick = document.createElement('i');
+                tick.style.bottom = `${((i - MIN) / RANGE) * 100}%`;
+                const opacity = Math.max(0, Math.min(1, (i - 40) / 30));
+                tick.style.opacity = opacity;
+                if (i % 5 === 0 && i > 65) tick.setAttribute('data-major', i);
+                ruler.appendChild(tick);
+            }
+        }
+
+        function triggerConfetti() {
+            for (let i = 0; i < 100; i++) {
+                const c = document.createElement('div');
+                c.className = 'confetti';
+                c.style.left = Math.random() * 100 + 'vw';
+                c.style.backgroundColor = `hsl(${Math.random() * 360}, 80%, 50%)`;
+                document.body.appendChild(c);
+                let top = -10, speed = 2 + Math.random() * 5;
+                const drop = () => {
+                    top += speed; c.style.top = top + 'px';
+                    if (top < window.innerHeight) requestAnimationFrame(drop);
+                    else c.remove();
+                };
+                requestAnimationFrame(drop);
+            }
+        }
+
+        function triggerWin() {
+            if (isWon) return;
+            isWon = true; btnHit.disabled = true; winMsg.style.display = 'block';
+            maintStatus.style.opacity = 0; display.classList.remove('in-zone');
+            statusMsg.textContent = "Congrats!"; triggerConfetti();
+        }
+
+        btnHit.addEventListener('mousedown', (e) => {
+            if (isWon) return;
+            tapTimes.push(performance.now());
+            const anchor = parseInt(cfgAnchor.value);
+            const basePower = parseFloat(cfgPwr.value);
+            let power = basePower;
+            
+            const decayPoint = checkDecayAnchor.checked ? anchor : MIN;
+            if (score > decayPoint) {
+                const progress = (score - decayPoint) / (MAX - decayPoint || 1);
+                power = basePower * (1 - (progress * 0.3));
+            }
+            score = Math.min(MAX, score + power);
+            updateUI();
+        });
+
+        btnReset.addEventListener('click', () => {
+            score = MIN; maintenanceTimer = 0; fallbackTimer = 0; isWon = false;
+            btnHit.disabled = false; winMsg.style.display = 'none';
+            statusMsg.textContent = "Grade Reveal"; updateUI();
+        });
+
+        function updateUI() {
+            const visual = ((score - MIN) / RANGE) * 100;
+            puck.style.height = `${visual}%`;
+            puck.style.backgroundColor = `hsl(${(score <= 75 ? (score - 40) / 35 * 50 : 50 + (score - 75) / 25 * 70)}, 80%, 50%)`;
+            display.style.opacity = Math.max(0, Math.min(1, (score - 50) / 20));
+            display.style.color = puck.style.backgroundColor;
+            display.textContent = Math.floor(score);
+            if (!isWon) statusMsg.textContent = score > MIN + 0.5 ? "Keep tapping as much as you think you dasurv." : "Grade Reveal";
+            
+            const anchor = parseInt(cfgAnchor.value), tolerance = parseInt(cfgTolerance.value), threshold = anchor - tolerance;
+            if (score >= threshold && !isWon && score > MIN + 5) display.classList.add('in-zone');
+            else display.classList.remove('in-zone');
+            
+            document.getElementById('lbl-pwr').textContent = parseFloat(cfgPwr.value).toFixed(1);
+            document.getElementById('lbl-anchor').textContent = cfgAnchor.value;
+            document.getElementById('lbl-tolerance').textContent = cfgTolerance.value;
+            document.getElementById('lbl-maint').textContent = cfgMaint.value + 's';
+            document.getElementById('lbl-drain-min').textContent = parseFloat(cfgDrainMin.value).toFixed(1);
+            document.getElementById('lbl-drain-max').textContent = parseFloat(cfgDrainMax.value).toFixed(1);
+            
+            tpsVal.parentNode.style.display = checkTps.checked ? 'block' : 'none';
+            maintStatus.style.display = checkMaint.checked ? 'block' : 'none';
+        }
+
+        let lastTime = performance.now();
+        function loop(now) {
+            if (!gameView.classList.contains('active')) return;
+            const dt = (now - lastTime) / 1000; lastTime = now;
+            const anchor = parseInt(cfgAnchor.value), tolerance = parseInt(cfgTolerance.value), target = parseInt(cfgMaint.value), threshold = anchor - tolerance;
+            
+            if (isWon) score -= (score - anchor) * 0.05;
+            else {
+                if (score > MIN) {
+                    let rate = parseFloat(cfgDrainMin.value);
+                    const drainPoint = checkDrainAnchor.checked ? anchor : MIN;
+                    if (score > drainPoint) {
+                        rate += ((score - drainPoint) / (MAX - drainPoint || 1)) * (parseFloat(cfgDrainMax.value) - rate);
+                    }
+                    score = Math.max(MIN, score - (rate * dt));
+                }
+                if (score >= threshold) {
+                    maintenanceTimer += dt;
+                    if (checkMaint.checked) maintStatus.style.opacity = 1;
+                    maintVal.textContent = Math.min(target, maintenanceTimer).toFixed(1);
+                    if (maintenanceTimer >= target) triggerWin();
+                } else { maintenanceTimer = 0; maintStatus.style.opacity = 0; }
+                if (score >= 70) { fallbackTimer += dt; if (fallbackTimer >= 40) triggerWin(); } else fallbackTimer = 0;
+            }
+            
+            const timeNow = performance.now();
+            tapTimes = tapTimes.filter(t => timeNow - t < 2000);
+            tpsVal.textContent = (tapTimes.length / 2.0).toFixed(1);
+            updateUI(); requestAnimationFrame(loop);
+        }
+    </script>
+</body>
+</html>
